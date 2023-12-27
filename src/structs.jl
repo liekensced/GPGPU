@@ -26,9 +26,9 @@ mutable struct GlobalMemory
 end
 
 mutable struct CUDACore
-    operands::Vector{Int}
-    operandLocks::Vector{Resource}
-    CUDACore(sim::Simulation, size=20) = new(zeros(Number, size), [Resource(sim, 1) for _ in 1:size])
+    operands::Vector{Vector{Int}}
+    operandLocks::Vector{Vector{Resource}}
+    CUDACore(sim::Simulation, registerSize=2, size=20) = new([zeros(Number, size) for _ in 1:registerSize], [[Resource(sim, 1) for _ in 1:size] for _ in 1:registerSize])
 end
 
 mutable struct Instruction
@@ -38,19 +38,21 @@ mutable struct Instruction
     valsOperands::Vector{Number}
 
     wb::Int # Write Back adress
+    
+    registerPointer::Int
 
     threads::Int
-    Instruction(type, addrOperands, valsOperands, wb) = new(type, addrOperands, valsOperands, wb, 32)
+    Instruction(type, addrOperands, valsOperands, wb, registerPointer=1) = new(type, addrOperands, valsOperands, wb,registerPointer, 32)
 end
 
 mutable struct SM
     coreAmount::Int # Amount of CUDA_Cores
     cores::Vector{CUDACore}
-    sharedMemory::SharedMemory # Or register file, a few kilobytes, 
+    sharedMemory::SharedMemory # a few kilobytes, 
     constantMemory::ConstantMemory
 
     globalMemoryRequests::Vector{Int} 
-    globalMemoryReceived::Vector{Int} # SharedMemory or L1 Cache
+    globalMemoryReceived::Vector{Int} # Like L1 Cache
 
     #threads::Vector{Instruction} # The warp scheduler will bundle these threads in groups of 32 threads in SIMD fashion, we will hard code this into warps
     warpBuffer::Vector{Instruction}
@@ -61,7 +63,7 @@ mutable struct SM
     intFUBW::Resource
     FPFUBW::Resource
     globalMemoryRequestBW::Resource
-    SM(sim::Simulation, coreAmount=32) = new(coreAmount, [CUDACore(sim) for _ in 1:coreAmount], SharedMemory(), ConstantMemory(), [GlobalMemorySIZE], [GlobalMemorySIZE], Instruction[], 0, Resource(sim, 1), Resource(sim, coreAmount), Resource(sim, coreAmount), Resource(sim, coreAmount), Resource(sim, 1))
+    SM(sim::Simulation, coreAmount=32, registerSize=1) = new(coreAmount, [CUDACore(sim,registerSize) for _ in 1:coreAmount], SharedMemory(), ConstantMemory(), [GlobalMemorySIZE], [GlobalMemorySIZE], Instruction[], 0, Resource(sim, 1), Resource(sim, coreAmount), Resource(sim, coreAmount), Resource(sim, coreAmount), Resource(sim, 1))
 end
 
 

@@ -217,7 +217,7 @@ md"### Write back"
 # ╔═╡ d859a90f-422e-4d8d-8542-d04db0394cc9
 
 @resumable function testWBS(sim,arch)
-    insn = Instruction("WBS", [1, 1], [], 1) # The wb actually doesn't get used
+    insn = Instruction("WBS", [1, 1], [], 0) # The wb actually doesn't get used
     @process simulateWarp(sim,arch,arch.SM,insn)
 end
 
@@ -287,7 +287,7 @@ println("=== Test SAXPY ===")
     @process simulateWarp(sim,arch,arch.SM,insn)
     @yield timeout(sim,1)
     
-    insn2 = Instruction("WBS", [1,7], [], 1) # Write the solution to shared memory at index TID
+    insn2 = Instruction("WBS", [1,7], [], 0) # Write the solution to shared memory at index TID
     @process simulateWarp(sim,arch,arch.SM,insn2)
     
 end
@@ -353,7 +353,7 @@ let
             Instruction("ADD", [1], [1000], 4), # Calculate address of y
             Instruction("LOADG", [4], [], 3), # Load y[tid] from global Mem
             Instruction("ADD", [2, 3], [], 2), # Save solution in 2
-            Instruction("WBS", [1, 2], [], 1) # Write the solution to shared memory at index TID
+            Instruction("WBS", [1, 2], [], 0) # Write the solution to shared memory at index TID
         ])
 
 	@process simulate(sim, arch)
@@ -379,7 +379,7 @@ let
             Instruction("ADD", [1], [1000], 4), # Calculate address of y
             Instruction("LOADG", [4], [], 5), # Load y[tid] from global Mem
             Instruction("ADD", [2, 5], [], 2), # Save solution in 2
-            Instruction("WBS", [1, 2], [], 1) # Write the solution to shared memory at index TID
+            Instruction("WBS", [1, 2], [], 0) # Write the solution to shared memory at index TID
         ])
 
 	@process simulate(sim, arch)
@@ -389,13 +389,13 @@ let
 end
 
 # ╔═╡ 71f0e296-91b9-4715-9b3d-5f85ea51be5b
-md"The beggist bottleneck is still fetching the data from global memory. If we could theoretically up the MEMREQUESTSIZE it could get a lot faster. (The time to go to global memory is pretty much fixed.)"
+md"The biggest bottleneck is still fetching the data from global memory. If we could theoretically up the MEMREQUESTSIZE it could get a lot faster. (The time to go to global memory is pretty much fixed.)"
 
 # ╔═╡ 72c485b6-a713-4cee-b22b-8228a5771fc2
 let
 	
 	sim = Simulation()
-	arch = Architecture(1, SM(sim), GlobalMemory(), [], 64 + 16);
+	arch = Architecture(1, SM(sim,32,2), GlobalMemory(), [], 64 + 16);
 
 	loadSAXPYAttempt(arch, idx ->
         [
@@ -406,7 +406,7 @@ let
 			Instruction("ADD", [1], [1000], 4), # Calculate address of y
 			Instruction("LOADG", [4], [], 5), # Load y[tid] from global Mem
             Instruction("ADD", [2, 5], [], 2), # Save solution in 2
-            Instruction("WBS", [1, 2], [], 1) # Write the solution to shared memory at index TID
+            Instruction("WBS", [1, 2], [], 0) # Write the solution to shared memory at index TID
         ])
 	@process simulate(sim, arch)
 	run(sim, 50000)

@@ -20,11 +20,11 @@ include("programs/SAXPY.jl")
 println("===")
 
 sim = Simulation()
-arch = Architecture(1, SM(sim), GlobalMemory(), []);
+arch = Architecture(1, SM(sim,32,8), GlobalMemory(), [],32*5);
 
 loadSAXPY(arch)
 
-@process simulate(sim, arch)
+@process simulate(sim, arch, 8)
 run(sim, 50000)
 
-visualize(arch)
+# visualize(arch)

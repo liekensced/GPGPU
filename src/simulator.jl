@@ -4,17 +4,16 @@ using ResumableFunctions
 # include("structs.jl")
 
 
-@resumable function simulate(sim::Simulation, arch::Architecture)
+@resumable function simulate(sim::Simulation, arch::Architecture, kernelLength::Int = 8)
     
-    
+    lockstepSize = length(kernelLength*arch.SM.cores[1].operands) * kernelLength
 
-    
     # First the warp scheduler acts every cycle:
     scheduledWarps = 0;
     for warp in arch.kernel
         @yield request(arch.SM.insnBW)
         @yield timeout(sim, 1) # Timeout for the warp to be scheduled.
-        if (scheduledWarps == 8) # The 8 could be enhanced to blockSize. Assures lockstep.
+        if (scheduledWarps == lockstepSize) # The 8 could be enhanced to blockSize. Assures lockstep.
             while length(arch.SM.warpBuffer) > 0
                 @yield timeout(sim, 1)
             end
@@ -23,6 +22,7 @@ using ResumableFunctions
         scheduledWarps += 1;
 
         @yield unlock(arch.SM.insnBW)
+        warp.registerPointer = ceil(scheduledWarps/kernelLength)
         @process simulateWarp(sim, arch, arch.SM, warp) # Yielding insnBW implies a free warp in this case.
         # intentionally not yielded
     end
@@ -53,18 +53,18 @@ end
     LATENCY = arch.latency
     INITIATION_INTERVALS = arch.initiationIntervals
     
-    operands = sm.cores[threadID].operands
+    operands = sm.cores[threadID].operands[warp.registerPointer]
+    operandLocks = sm.cores[threadID].operandLocks[warp.registerPointer]
 
-
-    @yield request(sm.cores[threadID].operandLocks[warp.wb])
+    warp.wb != 0 && @yield request(operandLocks[warp.wb])
 
 
     for addr in warp.addrOperands
 
         addr == warp.wb && continue
 
-        @yield request(sm.cores[threadID].operandLocks[addr])
-        @yield unlock(sm.cores[threadID].operandLocks[addr])
+        @yield request(operandLocks[addr])
+        @yield unlock(operandLocks[addr])
     end
 
 
@@ -147,6 +147,6 @@ end
 
     end
 
-    @yield unlock(sm.cores[threadID].operandLocks[warp.wb])
+    warp.wb != 0 && @yield unlock(operandLocks[warp.wb])
     warp.threads -= 1
 end

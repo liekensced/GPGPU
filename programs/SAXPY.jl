@@ -23,7 +23,7 @@ function loadSAXPY(arch::Architecture)
             Instruction("ADD", [1], [1000], 4), # Calculate address of y
             Instruction("LOADG", [4], [], 5), # Load y[tid] from global Mem
             Instruction("ADD", [2, 5], [], 2), # Save solution in 2
-            Instruction("WBS", [1, 2], [], 1) # Write the solution to shared memory at index TID
+            Instruction("WBS", [1, 2], [], 0) # Write the solution to shared memory at index TID
         ]
     end
     # 32 threads will be doing the same thing (SIMD)
@@ -31,7 +31,7 @@ function loadSAXPY(arch::Architecture)
     warpSize = arch.SM.coreAmount
 
     #idx NEEDS TO START @ 0
-    for idx = (0:5) * warpSize # Not enough to do the 1000 but no < N check implemented yet
+    for idx = (0:10) * warpSize # Not enough to do the 1000 but no < N check implemented yet
         push!(arch.kernel, saxpyInstructions(idx)...)
     end
 end
